@@ -2505,14 +2505,34 @@ if __name__ == '__main__':
     # 1. 启动时先初始化配置文件
     initialize_llm_config()
 
-    # 2. 配置 FFmpeg
-    ffmpeg_executable_path = os.path.join(ROOT_DIR, "ffmpeg-8.0-full_build", "bin", "ffmpeg.exe")
+    # 2. 配置 FFmpeg（跨平台支持）
+    import platform
+    system = platform.system()
+    
+    # 确定 ffmpeg 可执行文件名（Windows用.exe，Unix系统不需要扩展名）
+    ffmpeg_filename = "ffmpeg.exe" if system == "Windows" else "ffmpeg"
+    ffmpeg_executable_path = os.path.join(ROOT_DIR, "ffmpeg-8.0-full_build", "bin", ffmpeg_filename)
+    
     if os.path.exists(ffmpeg_executable_path):
         AudioSegment.converter = ffmpeg_executable_path
-        logger.info(f"成功为 pydub 定位到 ffmpeg.exe: {ffmpeg_executable_path}")
+        logger.info(f"成功为 pydub 定位到 ffmpeg: {ffmpeg_executable_path}")
     else:
-        logger.warning(f"未在期望的位置找到 ffmpeg.exe: {ffmpeg_executable_path}")
-        logger.warning("音频格式转换功能（如导出MP3）可能受限。")
+        # 尝试使用系统PATH中的ffmpeg
+        import shutil as shutil_check
+        system_ffmpeg = shutil_check.which("ffmpeg")
+        if system_ffmpeg:
+            AudioSegment.converter = system_ffmpeg
+            logger.info(f"使用系统 ffmpeg: {system_ffmpeg}")
+        else:
+            logger.warning(f"未找到 ffmpeg（检查路径: {ffmpeg_executable_path}）")
+            logger.warning("音频格式转换功能（如导出MP3）可能受限。")
+            logger.info(f"建议安装 ffmpeg:")
+            if system == "Darwin":  # macOS
+                logger.info("  macOS: brew install ffmpeg")
+            elif system == "Linux":
+                logger.info("  Linux: sudo apt-get install ffmpeg 或 sudo yum install ffmpeg")
+            elif system == "Windows":
+                logger.info("  Windows: 下载 ffmpeg 并放置到 ffmpeg-8.0-full_build/bin/ 目录")
 
     # 4. 解析命令行参数
     parser = argparse.ArgumentParser(description="AI Voice Studio Pro - Backend Service")
